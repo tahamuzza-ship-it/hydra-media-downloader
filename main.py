@@ -1,21 +1,17 @@
-import os
-from openai import OpenAI
+from fastapi import FastAPI
+from pydantic import BaseModel
+from analyzer import analyze_transcript
 
-def get_client():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise Exception("OPENAI_API_KEY not found in environment!")
-    return OpenAI(api_key=api_key)
+app = FastAPI()
 
-def analyze_transcript(text: str):
-    client = get_client()
+class Text(BaseModel):
+    content: str
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "Eres un analizador experto."},
-            {"role": "user", "content": text}
-        ]
-    )
+@app.get("/")
+def root():
+    return {"message": "HYDRA Analyzer listo."}
 
-    return response.choices[0].message["content"]
+@app.post("/analyze")
+def analyze_endpoint(body: Text):
+    result = analyze_transcript(body.content)
+    return {"analysis": result}
