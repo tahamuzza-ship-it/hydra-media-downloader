@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-yt_dlp
-openai-whisper
-python-multipart
+yt-dlp
+openai
+python-dotenv
