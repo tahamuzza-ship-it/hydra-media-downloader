@@ -1,44 +1,45 @@
-from fastapi import FastAPI, UploadFile, File
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
 import yt_dlp
-import subprocess
-import base64
 import os
 
-app = FastAPI()
+app = Flask(__name__)
 
-class Link(BaseModel):
-    url: str
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({"status": "OK", "message": "HYDRA Media Downloader is running."})
 
-@app.get("/")
-def root():
-    return {"message": "HYDRA Media Downloader activo."}
+@app.route('/download', methods=['POST'])
+def download():
+    data = request.get_json()
+    url = data.get('url')
 
-@app.post("/process-link")
-def process_link(link: Link):
-    video_path = "/tmp/video.mp4"
-    audio_path = "/tmp/audio.wav"
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+
+    os.makedirs("downloads", exist_ok=True)
+
+    ydl_opts = {
+        'outtmpl': 'downloads/%(id)s.%(ext)s',
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'noplaylist': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192'
+        }]
+    }
 
     try:
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": video_path,
-            "noplaylist": True,
-            "quiet": True
-        }
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([link.url])
+            info = ydl.extract_info(url, download=True)
+            filename = f"downloads/{info['id']}.mp3"
 
-        subprocess.run(["ffmpeg", "-i", video_path, audio_path, "-y"], check=True)
-
-        with open(audio_path, "rb") as f:
-            encoded = base64.b64encode(f.read()).decode("utf-8")
-
-        return {
-            "filename": "audio.wav",
-            "audio_base64": encoded
-        }
+        return jsonify({"status": "success", "file": filename})
 
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({'error': str(e)}), 500
+
+
+if __name__ == '__main__':
+    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
