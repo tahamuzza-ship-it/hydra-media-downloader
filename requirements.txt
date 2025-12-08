@@ -1,5 +1,5 @@
-fastapi
-uvicorn
-python-multipart
 yt-dlp
+uvicorn
+fastapi
+python-multipart
 ffmpeg-python
