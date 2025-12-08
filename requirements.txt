@@ -1,5 +1,5 @@
-yt-dlp
-uvicorn
 fastapi
+uvicorn
+yt_dlp
+openai-whisper
 python-multipart
-ffmpeg-python
