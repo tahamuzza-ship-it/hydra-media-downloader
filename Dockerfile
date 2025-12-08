@@ -13,9 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # copiar todo lo demás
 COPY . .
 
-# exponer puerto dinámico (Railway lo asigna)
-ENV PORT=${PORT}
-EXPOSE ${PORT}
+# puerto fijo interno
+ENV PORT=8080
+EXPOSE 8080
 
-# ejecutar uvicorn con el puerto que Railway asigna
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
+# ejecutar uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
