@@ -1,7 +1,6 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI
 from pydantic import BaseModel
 import yt_dlp
-import subprocess
 import os
 import traceback
 
@@ -11,46 +10,36 @@ app = FastAPI()
 def root():
     return {"message": "HYDRA Media Downloader activo."}
 
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    contents = await file.read()
-    return {"filename": file.filename, "size": len(contents)}
-
 class Link(BaseModel):
     url: str
 
 @app.post("/process-link")
 async def process_link(link: Link):
     try:
-        temp_path = "/tmp/audio"
-        wav_path = temp_path + ".wav"
+        # Archivo final: audio puro sin procesar
+        audio_path = "/tmp/audio.webm"
 
         ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': temp_path,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
-                'preferredquality': '192',
-            }],
+            "format": "bestaudio/best",
+            "outtmpl": audio_path,
+            "postprocessors": []  # <---- IMPORTANTE: SIN FFMPEG
         }
 
         # Descargar audio
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([link.url])
 
-        # Verificar que WAV se generó
-        if not os.path.exists(wav_path):
-            return {
-                "error": "No se generó el archivo WAV.",
-                "trace": "yt-dlp no produjo el archivo .wav"
-            }
+        # Leer archivo descargado
+        if not os.path.exists(audio_path):
+            return {"error": "No se descargó el audio."}
 
-        # Leer WAV como HEX
-        with open(wav_path, "rb") as f:
+        with open(audio_path, "rb") as f:
             content = f.read()
 
-        return {"wav_base64": content.hex()}
+        return {
+            "filename": "audio.webm",
+            "audio_base64": content.hex()
+        }
 
     except Exception as e:
         return {
