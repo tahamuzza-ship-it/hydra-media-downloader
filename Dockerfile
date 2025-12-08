@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # copiar todo lo demás
 COPY . .
 
-# puerto fijo interno
+# puerto fijo interno (Railway lo exige)
 ENV PORT=8080
 EXPOSE 8080
 
