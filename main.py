@@ -1,48 +1,68 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import yt_dlp
+import subprocess
 import os
-import traceback
+import base64
 
 app = FastAPI()
-
-@app.get("/")
-def root():
-    return {"message": "HYDRA Media Downloader activo."}
 
 class Link(BaseModel):
     url: str
 
+@app.get("/")
+def root():
+    return {"message": "HYDRA + Whisper listo."}
+
 @app.post("/process-link")
 async def process_link(link: Link):
     try:
-        # Archivo final: audio puro sin procesar
-        audio_path = "/tmp/audio.webm"
+        video_path = "/tmp/input.webm"
+        wav_path = "/tmp/output.wav"
 
+        # ─────────────────────────────────────
+        # 1. DESCARGA SOLO AUDIO (webm)
+        # ─────────────────────────────────────
         ydl_opts = {
             "format": "bestaudio/best",
-            "outtmpl": audio_path,
-            "postprocessors": []  # <---- IMPORTANTE: SIN FFMPEG
+            "outtmpl": video_path,
+            "postprocessors": [
+                {"key": "FFmpegCopyAudio", "preferredcodec": "webm"}
+            ]
         }
 
-        # Descargar audio
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([link.url])
 
-        # Leer archivo descargado
-        if not os.path.exists(audio_path):
-            return {"error": "No se descargó el audio."}
+        # ─────────────────────────────────────
+        # 2. CONVERTIR WEBM → WAV (si existe ffmpeg)
+        # ─────────────────────────────────────
+        try:
+            subprocess.run(
+                ["ffmpeg", "-i", video_path, wav_path, "-y"],
+                check=True
+            )
+            wav_exists = True
+        except Exception:
+            wav_exists = False
 
-        with open(audio_path, "rb") as f:
-            content = f.read()
+        # ─────────────────────────────────────
+        # 3. LEER ARCHIVOS COMO BASE64
+        # ─────────────────────────────────────
+        with open(video_path, "rb") as f:
+            webm_base64 = base64.b64encode(f.read()).decode()
+
+        wav_base64 = None
+        if wav_exists:
+            with open(wav_path, "rb") as f:
+                wav_base64 = base64.b64encode(f.read()).decode()
 
         return {
-            "filename": "audio.webm",
-            "audio_base64": content.hex()
+            "status": "ok",
+            "webm_base64": webm_base64,
+            "wav_base64": wav_base64,
+            "ffmpeg": wav_exists
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "trace": traceback.format_exc()
-        }
+        return {"error": str(e)}
