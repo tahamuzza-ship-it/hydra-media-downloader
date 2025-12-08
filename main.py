@@ -1,49 +1,53 @@
+from fastapi import FastAPI, UploadFile, File
+from pydantic import BaseModel
+import yt_dlp
+import subprocess
+import os
 import traceback
+
+app = FastAPI()
+
+@app.get("/")
+def root():
+    return {"message": "HYDRA Media Downloader activo."}
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    contents = await file.read()
+    return {"filename": file.filename, "size": len(contents)}
+
+class Link(BaseModel):
+    url: str
 
 @app.post("/process-link")
 async def process_link(link: Link):
     try:
-        video_path = "/tmp/input.mp4"
-        audio_path = "/tmp/output.wav"
+        temp_path = "/tmp/audio"
+        wav_path = temp_path + ".wav"
 
-        # 1. Descargar el video (formato seguro compatible con YouTube en Railway)
         ydl_opts = {
-            'format': 'mp4',  # evita bestvideo+bestaudio que falla con algunos videos y contenedores
-            'outtmpl': video_path
+            'format': 'bestaudio/best',
+            'outtmpl': temp_path,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'wav',
+                'preferredquality': '192',
+            }],
         }
 
+        # Descargar audio
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([link.url])
 
-        # Verificar que el archivo se descargó
-        if not os.path.exists(video_path) or os.path.getsize(video_path) < 1000:
+        # Verificar que WAV se generó
+        if not os.path.exists(wav_path):
             return {
-                "error": "El archivo no se descargó correctamente.",
-                "trace": "input.mp4 no existe o está vacío."
+                "error": "No se generó el archivo WAV.",
+                "trace": "yt-dlp no produjo el archivo .wav"
             }
 
-        # 2. Convertir a WAV
-        result = subprocess.run(
-            ["ffmpeg", "-i", video_path, audio_path, "-y"],
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode != 0:
-            return {
-                "error": "Error ejecutando ffmpeg.",
-                "trace": result.stderr
-            }
-
-        # Verificar que el WAV exista
-        if not os.path.exists(audio_path):
-            return {
-                "error": "ffmpeg no generó el archivo WAV.",
-                "trace": "output.wav no encontrado."
-            }
-
-        # 3. Leer WAV como HEX
-        with open(audio_path, "rb") as f:
+        # Leer WAV como HEX
+        with open(wav_path, "rb") as f:
             content = f.read()
 
         return {"wav_base64": content.hex()}
