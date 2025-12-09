@@ -1,15 +1,18 @@
-FROM python:3.12-slim
+FROM python:3.10-slim
 
-RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
+# Install yt-dlp
+RUN pip install yt-dlp
 
+# Install Node.js
+RUN apt-get update && apt-get install -y nodejs npm
+
+# App directory
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY package.json .
+RUN npm install
 
 COPY . .
 
-ENV PORT=8080
 EXPOSE 8080
-
-CMD ["python", "main.py"]
+CMD ["npm", "start"]
