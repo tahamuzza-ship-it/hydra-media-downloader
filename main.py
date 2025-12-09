@@ -41,8 +41,13 @@ def download():
         })
 
     except Exception as e:
+        print("🔥 ERROR en descarga:", str(e))  # <- para ver errores en Railway
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Puerto seguro para Railway
+    port = int(os.environ.get("PORT", "8080"))
+
+    print(f"🚀 Iniciando Hydra Downloader en puerto {port}...")  # <- SE VERÁ EN LOGS
+    app.run(host="0.0.0.0", port=port, debug=True)
