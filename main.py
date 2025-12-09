@@ -8,8 +8,11 @@ app = Flask(__name__)
 def home():
     return {"status": "OK", "message": "Hydra Downloader funcionando."}
 
-@app.route("/download", methods=["POST"])
-def download():
+# --------------------------------------------
+# ♥️ ESTA ES LA RUTA QUE QUIERES: /process-link
+# --------------------------------------------
+@app.route("/process-link", methods=["POST"])
+def process_link():
     data = request.get_json()
     url = data.get("url")
 
@@ -41,13 +44,14 @@ def download():
         })
 
     except Exception as e:
-        print("🔥 ERROR en descarga:", str(e))  # <- para ver errores en Railway
+        print("🔥 ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
 
+# --------------------------------------------
+# Servidor
+# --------------------------------------------
 if __name__ == "__main__":
-    # Puerto seguro para Railway
     port = int(os.environ.get("PORT", "8080"))
-
-    print(f"🚀 Iniciando Hydra Downloader en puerto {port}...")  # <- SE VERÁ EN LOGS
+    print(f"🚀 Servidor Hydra iniciado en puerto {port}")
     app.run(host="0.0.0.0", port=port, debug=True)
