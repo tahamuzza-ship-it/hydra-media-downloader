@@ -5,6 +5,9 @@ import os
 
 app = Flask(__name__)
 
+# ---------------------------------------------------
+# Extraer ID del video
+# ---------------------------------------------------
 def extract_video_id(url):
     patterns = [
         r"v=([^&]+)",
@@ -16,8 +19,15 @@ def extract_video_id(url):
             return match.group(1)
     return None
 
+
+# ---------------------------------------------------
+# Endpoint principal
+# ---------------------------------------------------
 @app.route("/process-link", methods=["POST"])
 def process_link():
+    if not request.is_json:
+        return jsonify({"error": "Content-Type debe ser application/json"}), 415
+
     data = request.get_json()
     url = data.get("url")
 
@@ -29,8 +39,11 @@ def process_link():
         return jsonify({"error": "No se pudo extraer el video_id"}), 400
 
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        full_text = " ".join([t["text"] for t in transcript])
+        # Nueva forma correcta
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id)
+
+        full_text = " ".join([t.text for t in transcript])
 
         return jsonify({
             "status": "success",
@@ -44,10 +57,21 @@ def process_link():
             "details": str(e)
         }), 500
 
+
+# ---------------------------------------------------
+# Health check
+# ---------------------------------------------------
 @app.route("/", methods=["GET"])
 def home():
-    return {"status": "OK", "message": "Hydra Transcript API funcionando."}
+    return {
+        "status": "OK",
+        "message": "Hydra Transcript API funcionando correctamente."
+    }
 
+
+# ---------------------------------------------------
+# Run
+# ---------------------------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8080"))
     app.run(host="0.0.0.0", port=port)
