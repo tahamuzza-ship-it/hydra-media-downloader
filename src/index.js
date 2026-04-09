@@ -1,5 +1,5 @@
 // Cloudflare Worker - YouTube Transcript Extractor
-// Usando YouTube Data API v3 con variable de entorno
+// Usando API pública gratuita (sin API Key)
 
 export default {
   async fetch(request) {
@@ -82,33 +82,18 @@ function extractVideoId(url) {
 }
 
 async function getTranscript(videoId) {
-  const API_KEY = YOUTUBE_API_KEY;
+  // Usar yewtu.be (Invidious) - público, sin API Key
+  const response = await fetch(`https://yewtu.be/api/v1/captions/${videoId}`);
   
-  if (!API_KEY) {
-    throw new Error('YOUTUBE_API_KEY no configurada');
+  if (!response.ok) {
+    throw new Error(`Error: ${response.status}`);
   }
   
-  const listUrl = `https://youtube.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${API_KEY}`;
-  const listResponse = await fetch(listUrl);
+  const data = await response.json();
   
-  if (!listResponse.ok) {
-    throw new Error(`Error al obtener lista: ${listResponse.status}`);
-  }
-  
-  const listData = await listResponse.json();
-  
-  if (!listData.items || listData.items.length === 0) {
+  if (!data.captions) {
     throw new Error('El video no tiene transcripción disponible');
   }
   
-  let captionId = listData.items[0].id;
-  
-  const transcriptUrl = `https://youtube.googleapis.com/youtube/v3/captions/${captionId}?key=${API_KEY}&tfmt=srt`;
-  const transcriptResponse = await fetch(transcriptUrl);
-  
-  if (!transcriptResponse.ok) {
-    throw new Error('No se pudo descargar la transcripción');
-  }
-  
-  return await transcriptResponse.text();
+  return data.captions;
 }
